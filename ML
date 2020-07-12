@@ -1,0 +1,62 @@
+
+%matplotlib inline
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
+from sklearn.preprocessing import LabelEncoder
+
+ks = pd.read_csv('https://www.kaggle.com/input/kickstarter-projects/ks-projects-201801.csv',
+                 parse_dates=['deadline', 'launched'])
+
+ks = ks.query('state != "live"')
+
+ks = ks.assign(outcome=(ks['state'] == 'successful').astype(int))
+
+ks = ks.assign(hour=ks.launched.dt.hour,
+               day=ks.launched.dt.day,
+               month=ks.launched.dt.month,
+               year=ks.launched.dt.year)
+
+cat_features = ['category', 'currency', 'country']
+encoder = LabelEncoder()
+encoded = ks[cat_features].apply(encoder.fit_transform)
+
+data_cols = ['goal', 'hour', 'day', 'month', 'year', 'outcome']
+baseline_data = ks[data_cols].join(encoded)
+
+
+label_enc = LabelEncoder()
+data_interaction = baseline_data.assign(category_country=label_enc.fit_transform(interactions))
+data_interaction.head()
+
+
+# First, create a Series with a timestamp index
+launched = pd.Series(ks.index, index=ks.launched, name="count_7_days").sort_index()
+launched.head(20)
+
+
+
+
+
+count_7_days = launched.rolling('7d').count() - 1
+print(count_7_days.head(20))
+
+# Ignore records with broken launch dates
+plt.plot(count_7_days[7:]);
+plt.title("Number of projects launched over periods of 7 days");
+
+
+
+
+
+def time_since_last_project(series):
+    # Return the time in hours
+    return series.diff().dt.total_seconds() / 3600.
+
+df = ks[['category', 'launched']].sort_values('launched')
+timedeltas = df.groupby('category').transform(time_since_last_project)
+timedeltas.head(20)
+
